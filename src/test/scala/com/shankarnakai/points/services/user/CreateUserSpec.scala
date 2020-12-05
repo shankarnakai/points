@@ -32,9 +32,9 @@ class CreateUserSpec extends AnyFlatSpec with Matchers {
       .value
 
     program.unsafeRunSync() match {
-      case Right(User(Some(1L), _)) => succeed
+      case Right(User(Some(1L), "test_login")) => succeed
+      case Right(usr) => fail(s"Unexpected user returned $usr")
       case Left(err) => fail(s"Fail with ${err}")
-      case _ => fail("Didn't create a user with id 1")
     }
   }
 
