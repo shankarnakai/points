@@ -68,7 +68,7 @@ class BalancePointsByOldest() extends BalancePoints {
           LocalDateTime.now(),
           consumed = true,
         ),
-        Point(None, head.userId, head.payer, resultPoint, LocalDateTime.now(), consumed = false),
+        Point(None, head.userId, head.payer, resultPoint, LocalDateTime.now()),
       )
 
       List(head.copy(consumed = true)) ++
@@ -87,28 +87,61 @@ class BalancePointsByOldest() extends BalancePoints {
     val creditHead :: creditTail = creditList
     val debitHead :: debitTail = debitList
 
-    val resultPoint = creditHead.point + debitHead.point + leftPoints
-    if (resultPoint == 0) {
-      (
-        creditTail,
-        debitTail,
-        consumed :+ debitHead.copy(consumed = true) :+ creditHead.copy(consumed = true),
-        0,
-      )
-    } else if (resultPoint > 0) {
-      (
-        creditHead +: creditTail,
-        debitTail,
-        consumed :+ debitHead.copy(consumed = true),
-        leftPoints + debitHead.point,
-      )
+    if (debitHead.payer.isBlank) {
+      if (creditHead.point + debitHead.point < 0) {
+        val debitPoint =
+          creditHead.copy(
+            id = None,
+            point = -creditHead.point,
+            transactionDate = LocalDateTime.now,
+            consumed = true,
+            createBy = creditHead.userId
+          )
+        (
+          creditTail,
+          debitHead.copy(point = debitHead.point - debitPoint.point) +: debitTail,
+          consumed :+ debitPoint :+ creditHead.copy(consumed = true),
+          0,
+        )
+      } else {
+        val debitPoint =
+          creditHead.copy(
+            id = None,
+            point = debitHead.point,
+            transactionDate = LocalDateTime.now,
+            createBy = creditHead.userId
+          )
+        (
+          creditHead +: creditTail,
+          debitPoint +: debitTail,
+          consumed,
+          0,
+        )
+      }
     } else {
-      (
-        creditTail,
-        debitHead +: debitTail,
-        consumed :+ creditHead.copy(consumed = true),
-        leftPoints + creditHead.point,
-      )
+      val resultPoint = creditHead.point + debitHead.point + leftPoints
+      if (resultPoint == 0) {
+        (
+          creditTail,
+          debitTail,
+          consumed :+ debitHead.copy(consumed = true) :+ creditHead.copy(consumed = true),
+          0,
+        )
+      } else if (resultPoint > 0) {
+        (
+          creditHead +: creditTail,
+          debitTail,
+          consumed :+ debitHead.copy(consumed = true),
+          leftPoints + debitHead.point,
+        )
+      } else {
+        (
+          creditTail,
+          debitHead +: debitTail,
+          consumed :+ creditHead.copy(consumed = true),
+          leftPoints + creditHead.point,
+        )
+      }
     }
   }
 

@@ -2,9 +2,15 @@ package com.shankarnakai.points
 
 //import config._
 import cats.effect._
+import com.shankarnakai.points.domain.points.model.Point
 import com.shankarnakai.points.domain.user.model.User
+import com.shankarnakai.points.infrastructure.endpoints.points.PointEndpoint
 import com.shankarnakai.points.infrastructure.endpoints.users.UserEndpoint
-import com.shankarnakai.points.infrastructure.repository.inmemory.UserRepositoryInMemory
+import com.shankarnakai.points.infrastructure.repository.inmemory.{
+  PointRepositoryInMemory,
+  UserRepositoryInMemory,
+}
+import com.shankarnakai.points.services.point.{BalancePoints, PointUseCases, PointUseCasesLive}
 import com.shankarnakai.points.services.user.{UserUseCases, UserUseCasesLive}
 import org.http4s.HttpApp
 import org.http4s.server.{Router, Server => H4Server}
@@ -21,20 +27,30 @@ object Server extends IOApp {
 
   val idGenerator = new Random()
 
-  def httpApp[F[_]: Effect: ContextShift: Timer](userUseCases: UserUseCases[F]): HttpApp[F] =
+  def httpApp[F[_]: Effect: ContextShift: Timer](
+      userUseCases: UserUseCases[F],
+      pointUseCases: PointUseCases[F],
+  ): HttpApp[F] =
     Router(
       "/users" -> UserEndpoint.endpoints(userUseCases),
+      "/users" -> PointEndpoint.endpoints(pointUseCases),
     ).orNotFound
 
   def createServer[F[_]: ConcurrentEffect: ContextShift: Timer]: Resource[F, H4Server[F]] =
     for {
       _ <- Blocker[F]
       userRepo = UserRepositoryInMemory[F](
-        new TrieMap[Long, User](),
+        initialUserData,
+        () => idGenerator.nextLong(Long.MaxValue),
+      )
+
+      pointRepo = PointRepositoryInMemory[F](
+        initialPointData,
         () => idGenerator.nextLong(Long.MaxValue),
       )
       userUseCases = UserUseCasesLive[F](userRepo)
-      app = httpApp[F](userUseCases)
+      pointUseCases = PointUseCasesLive[F](userRepo, pointRepo, BalancePoints.byOldest())
+      app = httpApp[F](userUseCases, pointUseCases)
       server <- BlazeServerBuilder[F](global)
         .bindHttp(SERVER_PORT, SERVER_HOST)
         .withHttpApp(app)
@@ -43,4 +59,13 @@ object Server extends IOApp {
 
   override def run(args: List[String]): IO[ExitCode] =
     createServer[IO].use(_ => IO.never).as(ExitCode.Success)
+
+
+  def initialUserData: TrieMap[Long, User] = {
+    val userCache = new TrieMap[Long, User]()
+    userCache.update(1L, User(Some(1L), "test_login"))
+    userCache
+  }
+
+  def initialPointData: TrieMap[Long, Point] = new TrieMap[Long, Point]()
 }

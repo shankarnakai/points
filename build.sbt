@@ -23,7 +23,9 @@ libraryDependencies ++= Seq(
   "org.http4s" %% "http4s-dsl" % Http4sVersion,
   "io.circe" %% "circe-core" % CirceVersion,
   "io.circe" %% "circe-generic" % CirceVersion,
+  "io.circe" %% "circe-generic-extras" % CirceVersion,
   "io.circe" %% "circe-parser" % CirceVersion,
+  "io.circe" %% "circe-literal" % CirceVersion,
   "org.specs2" %% "specs2-core" % Specs2Version % "test",
   "ch.qos.logback" % "logback-classic" % LogbackVersion,
   "org.scalameta" %% "svm-subs" % GRAALVM_VERSION % "compile-internal",
@@ -35,6 +37,8 @@ libraryDependencies ++= Seq(
 )
 
 dependencyOverrides += "org.slf4j" % "slf4j-api" % Slf4jVersion
+
+dependencyOverrides += "io.circe" %% "circe-java8" % "0.11.1" cross CrossVersion.full
 
 addCompilerPlugin(
   "org.typelevel" %% "kind-projector" % KindProjectorVersion cross CrossVersion.full)

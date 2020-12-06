@@ -1,13 +1,9 @@
 package com.shankarnakai.points.services.point
 
 import cats.implicits._
-import cats.data.EitherT
+import cats.data.{EitherT, OptionT}
 import cats.{Applicative, Monad}
-import com.shankarnakai.points.domain.points.exceptions.{
-  IllegalPointArgumentException,
-  NegativeCreditPointException,
-  PointException,
-}
+import com.shankarnakai.points.domain.points.exceptions.{NegativeCreditPointException, PointException, UserIdForPointFoundException}
 import com.shankarnakai.points.domain.points.model.Point
 import com.shankarnakai.points.domain.points.repository.PointRepository
 import com.shankarnakai.points.domain.user.model.User
@@ -20,19 +16,18 @@ class AddPointsToUser[F[_]: Applicative](
 ) {
   def exec(userId: Long, point: Point)(implicit M: Monad[F]): EitherT[F, PointException, Unit] = {
     val availablePoints: EitherT[F, PointException, List[Point]] = for {
-      _ <- userExist(userId).leftMap((err: Exception) =>
-        IllegalPointArgumentException(point, err.getMessage()),
-      )
+      _ <- userExist(userId).toRight(UserIdForPointFoundException(userId, Some(point)))
       points <- EitherT.liftF(
         pointRepository.getByConsumed(userId, consumed = false, Some(point.payer)),
       )
-    } yield points.filter(_.payer == point.payer)
+    } yield points
 
     availablePoints.flatMap { points =>
-      val balanced = balancePoints.exec(points :+ point)
-      val total = balanced.map(_.point).sum
+      val balanced = balancePoints.exec(points :+ point.copy(createBy = userId))
+      val debit = balanced.filter(_.point < 0).map(_.point).sum
+      val credit = balanced.filter(_.point > 0).map(_.point).sum
 
-      if (total < 0) EitherT.leftT(NegativeCreditPointException(userId, total))
+      if (0 > credit + debit ) EitherT.leftT(NegativeCreditPointException(userId, point, credit))
       else {
         balanced.filter(_.id.isEmpty).map(p => pointRepository.create(p))
         balanced
@@ -46,8 +41,7 @@ class AddPointsToUser[F[_]: Applicative](
     }
   }
 
-  private def userExist(id: Long): EitherT[F, Exception, User] =
-    userRepository.getById(id).toRight(new Exception(s"User #$id not found"))
+  private def userExist(id: Long): OptionT[F, User] = userRepository.getById(id)
 }
 
 object AddPointsToUser {

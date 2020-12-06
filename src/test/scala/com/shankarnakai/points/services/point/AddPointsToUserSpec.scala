@@ -58,10 +58,10 @@ class AddPointsToUserSpec extends AnyFlatSpec with Matchers {
     } yield ()).value.unsafeRunSync()
 
     val expected = List(
-      Point(Some(1), 1L, "MILLER COORS", 1000, yesterday, consumed = false),
-      Point(Some(2), 1L, "UNILEVER", 200, yesterday, consumed = false),
-      Point(Some(3), 1L, "DANNON", 200, today, consumed = true),
-      Point(Some(4), 1L, "DANNON", -200, today, consumed = true),
+      Point(Some(1), 1L, "MILLER COORS", 1000, yesterday, consumed = false, createBy = 1L),
+      Point(Some(2), 1L, "UNILEVER", 200, yesterday, consumed = false, createBy = 1L),
+      Point(Some(3), 1L, "DANNON", 200, today, consumed = true, createBy = 1L),
+      Point(Some(4), 1L, "DANNON", -200, today, consumed = true, createBy = 1L),
     )
 
     removeTransactionDate(
@@ -69,7 +69,7 @@ class AddPointsToUserSpec extends AnyFlatSpec with Matchers {
     ) shouldBe removeTransactionDate(expected)
   }
 
-  "AddPointsToUser" should "consume the OLDEST record related to the same company that it's deducting points" in {
+  it should "consume the OLDEST record related to the same company that it's deducting points" in {
     val (pointCache, useCase) = testResource
     val today = LocalDateTime.now()
     val yesterday = today.plusDays(-1)
@@ -85,11 +85,11 @@ class AddPointsToUserSpec extends AnyFlatSpec with Matchers {
     } yield ()).value.unsafeRunSync()
 
     val expected = List(
-      Point(Some(1), 1L, "DANNON", 200, yesterday, consumed = true),
-      Point(Some(2), 1L, "MILLER COORS", 1000, yesterday, consumed = false),
-      Point(Some(3), 1L, "UNILEVER", 200, yesterday, consumed = false),
-      Point(Some(4), 1L, "DANNON", 200, today, consumed = false),
-      Point(Some(5), 1L, "DANNON", -200, today, consumed = true),
+      Point(Some(1), 1L, "DANNON", 200, yesterday, consumed = true, createBy = 1L),
+      Point(Some(2), 1L, "MILLER COORS", 1000, yesterday, consumed = false, createBy = 1L),
+      Point(Some(3), 1L, "UNILEVER", 200, yesterday, consumed = false, createBy = 1L),
+      Point(Some(4), 1L, "DANNON", 200, today, consumed = false, createBy = 1L),
+      Point(Some(5), 1L, "DANNON", -200, today, consumed = true, createBy = 1L),
     )
 
     removeTransactionDate(
@@ -112,13 +112,13 @@ class AddPointsToUserSpec extends AnyFlatSpec with Matchers {
     } yield action).value.unsafeRunSync()
 
     val expected = List(
-      Point(Some(1), 1L, "DANNON", 300, yesterday, consumed = true),
-      Point(Some(2), 1L, "UNILEVER", 200, yesterday, consumed = false),
-      Point(Some(3), 1L, "DANNON", -200, yesterday, consumed = true),
-      Point(Some(4), 1L, "DANNON", -100, today, consumed = true),
-      Point(Some(5), 1L, "DANNON", 100, today, consumed = false),
-      Point(Some(6), 1L, "MILLER COORS", 10000, today, consumed = false),
-      Point(Some(7), 1L, "DANNON", 1000, today, consumed = false),
+      Point(Some(1), 1L, "DANNON", 300, yesterday, consumed = true, createBy = 1L),
+      Point(Some(2), 1L, "UNILEVER", 200, yesterday, consumed = false, createBy = 1L),
+      Point(Some(3), 1L, "DANNON", -200, yesterday, consumed = true, createBy = 1L),
+      Point(Some(4), 1L, "DANNON", -100, today, consumed = true, createBy = 0),
+      Point(Some(5), 1L, "DANNON", 100, today, consumed = false, createBy = 0),
+      Point(Some(6), 1L, "MILLER COORS", 10000, today, consumed = false, createBy = 1L),
+      Point(Some(7), 1L, "DANNON", 1000, today, consumed = false, createBy = 1L),
     )
 
     removeTransactionDate(
@@ -137,8 +137,8 @@ class AddPointsToUserSpec extends AnyFlatSpec with Matchers {
     } yield ()).value
 
     program.unsafeRunSync() match {
-      case Left(NegativeCreditPointException(_, _)) => succeed
-      case Right(_) => fail(s"Expected to fail with NegativeCreditPointException")
+      case Left(NegativeCreditPointException(_,_, _)) => succeed
+      case Right(a) => fail(s"Expected to fail with NegativeCreditPointException $a")
       case Left(err) => fail(
         s"Expected to fail with NegativeCreditPointException but failed with $err"
       )
@@ -158,7 +158,7 @@ class AddPointsToUserSpec extends AnyFlatSpec with Matchers {
     } yield ()).value
 
     program.unsafeRunSync() match {
-      case Left(NegativeCreditPointException(_, _)) => succeed
+      case Left(NegativeCreditPointException(_, _, _)) => succeed
       case Right(_) => fail(s"Expected to fail with NegativeCreditPointException")
       case Left(err) => fail(
         s"Expected to fail with NegativeCreditPointException but failed with $err"

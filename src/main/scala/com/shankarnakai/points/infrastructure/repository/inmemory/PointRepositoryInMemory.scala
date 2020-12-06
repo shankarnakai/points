@@ -37,7 +37,7 @@ class PointRepositoryInMemory[F[_]: Applicative](
       .pure[F]
   }
 
-  override def getByUser(userId: Long) =
+  override def getByUser(userId: Long): F[List[Point]] =
   cache.values.toList
     .filter(point => point.userId == userId)
     .sortBy(_.transactionDate)

@@ -12,8 +12,8 @@ trait UserUseCases[F[_]] {
 
 case class UserUseCasesLive[F[_]: Applicative](userRepository: UserRepository[F])
     extends UserUseCases[F] {
-  val createUser = CreateUser(userRepository)
-  val getUserById = GetUserById(userRepository)
-  val listUsers = ListUsers(userRepository)
-  val updateUser = UpdateUser(userRepository)
+  val createUser: CreateUser[F] = CreateUser(userRepository)
+  val getUserById: GetUserById[F] = GetUserById(userRepository)
+  val listUsers: ListUsers[F] = ListUsers(userRepository)
+  val updateUser: UpdateUser[F] = UpdateUser(userRepository)
 }
