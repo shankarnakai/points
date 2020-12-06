@@ -16,6 +16,10 @@ version := "0.0.1-SNAPSHOT"
 scalaVersion in ThisBuild := "2.13.4"
 crossScalaVersions := Seq("2.12.12", "2.13.4")
 
+test in assembly := {}
+mainClass in assembly := Some("com.shankarnakai.points.Server")
+assemblyJarName in assembly := "point.jar"
+
 libraryDependencies ++= Seq(
   "org.http4s" %% "http4s-blaze-server" % Http4sVersion,
   "org.http4s" %% "http4s-blaze-client" % Http4sVersion,
@@ -44,4 +48,4 @@ addCompilerPlugin(
   "org.typelevel" %% "kind-projector" % KindProjectorVersion cross CrossVersion.full)
 addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
 
-enablePlugins(ScalafmtPlugin, JavaAppPackaging)
+enablePlugins(ScalafmtPlugin)
